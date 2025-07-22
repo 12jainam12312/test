@@ -9,6 +9,7 @@ import 'package:medical/screens/chat_screen.dart';
 import 'package:medical/screens/educational_lessons_app.dart';
 import 'package:medical/screens/settings_page.dart';
 import 'package:medical/widgets/typing_text_animation.dart';
+import 'package:medical/screens/ayurvedic_solutions_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import 'package:medical/screens/hospital_locator_page.dart';
@@ -438,6 +439,22 @@ class _MainDrawer extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                   builder: (_) => const EducationalLessonsPage(),
+                ),
+              );
+            },
+          ),
+
+          ListTile(
+            leading: Icon(Icons.lightbulb_outline, color: themeProvider.primaryColor),
+            title: Text(
+              'Ayurvedic Solutions',
+              style: TextStyle(color: themeProvider.textColor, fontSize: 16),
+            ),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const AyurvedicSolutionsScreen(),
                 ),
               );
             },

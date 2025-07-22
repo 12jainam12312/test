@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:medical/screens/signup_screen.dart';
+import 'package:medical/screens/role_selection_screen.dart';
 import '../services/auth_service.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/auth_input_field.dart';
@@ -71,7 +71,7 @@ class _AuthScreenState extends State<AuthScreen> {
   void navigateToSignUp() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (context) => const SignUpScreen(),
+        builder: (context) => const RoleSelectionScreen(),
       ),
     );
   }

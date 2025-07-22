@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
+import '../providers/theme_provider.dart';
+import '../models/user_model.dart';
+import '../services/user_service.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/auth_input_field.dart';
 import 'auth_screen.dart';
-import 'homeshell.dart'; // navigate after signup
+import 'homeshell.dart';
+import 'doctor_verification_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({super.key});
+  final UserRole selectedRole;
+  
+  const SignUpScreen({super.key, required this.selectedRole});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -16,6 +23,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
+  final nameController = TextEditingController();
 
   bool isLoading = false;
 
@@ -23,8 +31,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
+    final name = nameController.text.trim();
 
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty || name.isEmpty) {
       showError('Please fill in all fields.');
       return;
     }
@@ -37,16 +46,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
     setState(() => isLoading = true);
 
     try {
-      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Automatically navigates to HomeShell after successful sign-up
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const HomeShell()),
+      // Update display name
+      await userCredential.user?.updateDisplayName(name);
+      
+      // Create user profile in Firestore
+      await UserService.createUserProfile(
+        uid: userCredential.user!.uid,
+        email: email,
+        displayName: name,
+        role: widget.selectedRole,
       );
+
+      // Navigate based on role
+      if (widget.selectedRole == UserRole.doctor) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DoctorVerificationScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeShell()),
+        );
+      }
     } on FirebaseAuthException catch (e) {
       showError(e.message ?? 'Sign up failed. Please try again.');
     } finally {
@@ -62,8 +89,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: themeProvider.backgroundColor,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -76,23 +105,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       const SizedBox(height: 60),
                       Image.asset('assets/Luna.png', width: 80, height: 80),
                       const SizedBox(height: 32),
-                      const Text(
-                        "Sign Up For Free",
+                      Text(
+                        widget.selectedRole == UserRole.doctor 
+                            ? "Join as Doctor" 
+                            : "Sign Up For Free",
                         style: TextStyle(
-                          color: Color(0xFF7ED321),
+                          color: themeProvider.primaryColor,
                           fontSize: 28,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        "Sign up in 1 minute for free!",
+                      Text(
+                        widget.selectedRole == UserRole.doctor 
+                            ? "Start your practice with Luna" 
+                            : "Sign up in 1 minute for free!",
                         style: TextStyle(
-                          color: Color(0xFF8E8E8E),
+                          color: themeProvider.secondaryTextColor,
                           fontSize: 16,
                         ),
                       ),
                       const SizedBox(height: 48),
+
+                      // Name Label
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          "Full Name",
+                          style: TextStyle(
+                            color: themeProvider.textColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Name Input
+                      AuthInputField(
+                        controller: nameController,
+                        hintText: "Enter your full name...",
+                        icon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 24),
 
                       label("Email Address"),
                       AuthInputField(
@@ -123,7 +178,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: isLoading
-                            ? const Center(child: CircularProgressIndicator(color: Color(0xFF7ED321)))
+                            ? Center(child: CircularProgressIndicator(color: themeProvider.primaryColor))
                             : AuthButton(
                                 label: "Sign Up",
                                 onPressed: handleSignUp,
@@ -144,7 +199,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     const Text(
                       "Already have an account? ",
                       style: TextStyle(
-                        color: Color(0xFF8E8E8E),
+                        color: themeProvider.secondaryTextColor,
                         fontSize: 16,
                       ),
                     ),
@@ -157,11 +212,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: const Text(
                         "Sign in",
                         style: TextStyle(
-                          color: Color(0xFF7ED321),
+                          color: themeProvider.primaryColor,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                           decoration: TextDecoration.underline,
-                          decorationColor: Color(0xFF7ED321),
+                          decorationColor: themeProvider.primaryColor,
                         ),
                       ),
                     ),
@@ -176,12 +231,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Widget label(String text) {
+    final themeProvider = Provider.of<ThemeProvider>(context);
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
         text,
         style: const TextStyle(
-          color: Colors.white,
+          color: themeProvider.textColor,
           fontSize: 16,
           fontWeight: FontWeight.w500,
         ),
