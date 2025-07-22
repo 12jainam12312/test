@@ -45,3 +45,4 @@ app.*.map.json
 /android/app/release
 # Allow team keystore
 !android/keystores/team-debug.keystore
+.env
