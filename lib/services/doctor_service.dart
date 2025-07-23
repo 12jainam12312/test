@@ -1,11 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
 import '../models/user_model.dart';
 
 class DoctorService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirebaseStorage _storage = FirebaseStorage.instance;
 
   // Submit doctor application
   static Future<void> submitDoctorApplication({
@@ -14,20 +12,8 @@ class DoctorService {
     required String experience,
     required String medicalLicense,
     required List<String> certificates,
-    required List<File> documents,
   }) async {
     try {
-      // Upload documents to Firebase Storage
-      List<String> documentUrls = [];
-      
-      for (int i = 0; i < documents.length; i++) {
-        final file = documents[i];
-        final ref = _storage.ref().child('doctor_documents/$uid/document_$i.jpg');
-        final uploadTask = await ref.putFile(file);
-        final downloadUrl = await uploadTask.ref.getDownloadURL();
-        documentUrls.add(downloadUrl);
-      }
-
       // Create doctor profile
       final doctor = DoctorModel(
         uid: uid,
@@ -35,7 +21,7 @@ class DoctorService {
         experience: experience,
         medicalLicense: medicalLicense,
         certificates: certificates,
-        documentUrls: documentUrls,
+        documentUrls: [], // For now, we'll skip file uploads
         appliedAt: DateTime.now(),
       );
 

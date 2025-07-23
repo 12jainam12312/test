@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'dart:io';
 import '../providers/theme_provider.dart';
 import '../services/doctor_service.dart';
 import '../services/auth_service.dart';
@@ -24,31 +22,12 @@ class _DoctorVerificationScreenState extends State<DoctorVerificationScreen> {
   final medicalLicenseController = TextEditingController();
   final certificatesController = TextEditingController();
   
-  List<File> selectedDocuments = [];
   bool isSubmitting = false;
-  final ImagePicker _picker = ImagePicker();
 
-  Future<void> _pickDocuments() async {
-    try {
-      final List<XFile> images = await _picker.pickMultiImage();
-      
-      if (images.isNotEmpty) {
-        setState(() {
-          selectedDocuments = images.map((xfile) => File(xfile.path)).toList();
-        });
-      }
-    } catch (e) {
-      _showSnackBar('Error picking documents: $e');
-    }
-  }
 
   Future<void> _submitApplication() async {
     if (!_formKey.currentState!.validate()) return;
     
-    if (selectedDocuments.isEmpty) {
-      _showSnackBar('Please upload at least one document');
-      return;
-    }
 
     setState(() => isSubmitting = true);
 
@@ -68,7 +47,6 @@ class _DoctorVerificationScreenState extends State<DoctorVerificationScreen> {
         experience: experienceController.text.trim(),
         medicalLicense: medicalLicenseController.text.trim(),
         certificates: certificates,
-        documents: selectedDocuments,
       );
 
       Navigator.pushReplacement(
@@ -183,14 +161,14 @@ class _DoctorVerificationScreenState extends State<DoctorVerificationScreen> {
 
             const SizedBox(height: 32),
 
-            // Document Upload Section
+            // Note Section (replacing document upload for now)
             AnimatedCard(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Upload Documents',
+                    'Document Verification',
                     style: TextStyle(
                       color: themeProvider.textColor,
                       fontSize: 18,
@@ -199,65 +177,12 @@ class _DoctorVerificationScreenState extends State<DoctorVerificationScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Please upload your medical license, certificates, and other relevant documents.',
+                    'Document upload feature will be available soon. For now, please ensure all information above is accurate.',
                     style: TextStyle(
                       color: themeProvider.secondaryTextColor,
                       fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  
-                  // Upload Button
-                  AnimatedButton(
-                    text: selectedDocuments.isEmpty 
-                        ? 'Select Documents' 
-                        : '${selectedDocuments.length} Documents Selected',
-                    icon: Icons.upload_file,
-                    onPressed: _pickDocuments,
-                  ),
-                  
-                  // Show selected documents
-                  if (selectedDocuments.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    ...selectedDocuments.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final file = entry.value;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.description,
-                              color: themeProvider.primaryColor,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Document ${index + 1}',
-                                style: TextStyle(
-                                  color: themeProvider.textColor,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.delete,
-                                color: Colors.red,
-                                size: 20,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  selectedDocuments.removeAt(index);
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    }),
-                  ],
                 ],
               ),
             ),
