@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:medical/screens/role_selection_screen.dart';
 import '../services/auth_service.dart';
+import '../services/user_service.dart';
+import '../models/user_model.dart';
 import '../widgets/auth_button.dart';
 import '../widgets/auth_input_field.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 // Import the SignUpScreen
 import 'package:medical/screens/homeshell.dart';
+import 'package:medical/screens/doctor_pending_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -32,13 +35,63 @@ class _AuthScreenState extends State<AuthScreen> {
     if (user != null) {
       // User is already signed in, navigate to home
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => HomeShell(
-            ),
-          ),
-        );
+        _navigateBasedOnUserRole();
       });
+    }
+  }
+
+  Future<void> _navigateBasedOnUserRole() async {
+    final user = _authService.currentUser;
+    if (user == null) return;
+
+    try {
+      final userProfile = await UserService.getUserProfile(user.uid);
+      
+      if (userProfile == null) {
+        // User profile doesn't exist, redirect to role selection
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+        );
+        return;
+      }
+
+      if (userProfile.role == UserRole.doctor) {
+        // Check doctor verification status
+        final doctorProfile = await DoctorService.getDoctorProfile(user.uid);
+        
+        if (doctorProfile == null) {
+          // Doctor hasn't completed verification
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DoctorVerificationScreen()),
+          );
+        } else if (doctorProfile.status == DoctorStatus.pending) {
+          // Doctor is waiting for approval
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DoctorPendingScreen()),
+          );
+        } else if (doctorProfile.status == DoctorStatus.approved) {
+          // Doctor is approved, go to home
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const HomeShell()),
+          );
+        } else {
+          // Doctor was rejected, go to pending screen to see reason
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DoctorPendingScreen()),
+          );
+        }
+      } else {
+        // Patient user, go to home
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const HomeShell()),
+        );
+      }
+    } catch (e) {
+      print('Error checking user role: $e');
+      // Fallback to role selection
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+      );
     }
   }
 
@@ -46,13 +99,8 @@ class _AuthScreenState extends State<AuthScreen> {
     try {
       final user = await _authService.signInWithGoogle();
       if (user != null) {
-        // Sign in successful, navigate to home
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => HomeShell(
-            ),
-          ),
-        );
+        // Sign in successful, navigate based on role
+        await _navigateBasedOnUserRole();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -61,11 +109,27 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  void handleEmailSignIn() {
-    // You can implement this with Firebase Email/Password auth later
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Email/Password sign-in coming soon!')),
-    );
+  void handleEmailSignIn() async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all fields')),
+      );
+      return;
+    }
+
+    try {
+      final user = await _authService.signInWithEmailAndPassword(email, password);
+      if (user != null) {
+        await _navigateBasedOnUserRole();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sign in failed: $e')),
+      );
+    }
   }
 
   void navigateToSignUp() {
